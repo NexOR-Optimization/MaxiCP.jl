@@ -70,7 +70,6 @@ function test_runtests()
             r"test_solve_twice",
             # CP-SAT tests beyond AllDifferent
             "test_cpsat_BinPacking",
-            "test_cpsat_Circuit",
             "test_cpsat_CountAtLeast",
             "test_cpsat_CountBelongs",
             "test_cpsat_CountDistinct",
