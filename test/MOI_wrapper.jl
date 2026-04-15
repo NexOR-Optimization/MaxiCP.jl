@@ -76,7 +76,7 @@ function test_runtests()
             "test_cpsat_CountGreaterThan",
             "test_cpsat_Path",
             "test_cpsat_ReifiedAllDifferent",
-            # Infeasible/unbounded detection
+            # Infeasible/unbounded need dual certificates
             r"test_infeasible_",
             r"test_unbounded_",
             # Variable solve tests
@@ -84,7 +84,6 @@ function test_runtests()
             # Constraint tests that require solve with Float64 objectives
             r"test_constraint_ScalarAffineFunction_",
             r"test_constraint_VectorAffineFunction_",
-            r"test_constraint_ZeroOne_bounds",
             # Objective tests that require unsupported features
             r"test_objective_ObjectiveFunction_VariableIndex",
             r"test_objective_ObjectiveFunction_constant",
