@@ -7,6 +7,31 @@ function _build_constraint(
     return jcall(MFactory, "allDifferent", JConstraint, (Vector{IntExpression},), vars)
 end
 
+# Circuit constraint
+
+function MOI.supports_constraint(
+    ::Optimizer,
+    ::Type{MOI.VectorOfVariables},
+    ::Type{MOI.Circuit},
+)
+    return true
+end
+
+function _build_constraint(
+    model::Optimizer,
+    f::MOI.VectorOfVariables,
+    ::MOI.Circuit,
+)
+    vars = _parse_to_vars(model, f)
+    # MOI uses 1-based indexing, MaxiCP uses 0-based.
+    # Create x[i] - 1 expressions for the circuit constraint.
+    shifted = IntExpression[
+        jcall(MFactory, "minus", IntExpression, (IntExpression, jint), v, Int32(1))
+        for v in vars
+    ]
+    return jcall(MFactory, "circuit", JConstraint, (Vector{IntExpression},), shifted)
+end
+
 # Table constraint
 
 function MOI.supports_constraint(

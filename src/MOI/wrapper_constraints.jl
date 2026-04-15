@@ -52,6 +52,18 @@ end
 function MOI.add_constraint(
     model::Optimizer,
     f::MOI.VectorOfVariables,
+    s::MOI.Circuit,
+)
+    index = MOI.ConstraintIndex{MOI.VectorOfVariables, MOI.Circuit}(length(model.constraint_info) + 1)
+    constr = _build_constraint(model, f, s)
+    _add_constraint_to_model(model, constr)
+    model.constraint_info[index] = ConstraintInfo(index, constr, f, s)
+    return index
+end
+
+function MOI.add_constraint(
+    model::Optimizer,
+    f::MOI.VectorOfVariables,
     s::MOI.Table{T},
 ) where {T <: Real}
     index = MOI.ConstraintIndex{MOI.VectorOfVariables, MOI.Table{T}}(length(model.constraint_info) + 1)
