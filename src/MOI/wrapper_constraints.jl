@@ -1,7 +1,3 @@
-function _info(::Optimizer, key::MOI.ConstraintIndex{MOI.VariableIndex, <:Any})
-    throw(MOI.InvalidIndex(key))
-end
-
 function _info(model::Optimizer, key::MOI.ConstraintIndex)
     if haskey(model.constraint_info, key)
         return model.constraint_info[key]
@@ -43,6 +39,18 @@ function MOI.add_constraint(
     s::MOI.AllDifferent,
 )
     index = MOI.ConstraintIndex{MOI.VectorOfVariables, MOI.AllDifferent}(length(model.constraint_info) + 1)
+    constr = _build_constraint(model, f, s)
+    _add_constraint_to_model(model, constr)
+    model.constraint_info[index] = ConstraintInfo(index, constr, f, s)
+    return index
+end
+
+function MOI.add_constraint(
+    model::Optimizer,
+    f::MOI.VectorOfVariables,
+    s::MOI.BinPacking{T},
+) where {T <: Real}
+    index = MOI.ConstraintIndex{MOI.VectorOfVariables, MOI.BinPacking{T}}(length(model.constraint_info) + 1)
     constr = _build_constraint(model, f, s)
     _add_constraint_to_model(model, constr)
     model.constraint_info[index] = ConstraintInfo(index, constr, f, s)

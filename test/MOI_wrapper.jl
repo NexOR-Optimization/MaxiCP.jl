@@ -69,12 +69,11 @@ function test_runtests()
             r"test_solve_optimize_twice",
             r"test_solve_twice",
             # CP-SAT tests beyond AllDifferent
-            "test_cpsat_BinPacking",
+            "test_cpsat_Cumulative",
             "test_cpsat_CountAtLeast",
             "test_cpsat_CountBelongs",
             "test_cpsat_CountDistinct",
             "test_cpsat_CountGreaterThan",
-            "test_cpsat_Cumulative",
             "test_cpsat_Path",
             "test_cpsat_ReifiedAllDifferent",
             # Infeasible/unbounded detection
