@@ -79,24 +79,28 @@ function MOI.add_constrained_variable(model::Optimizer, set::MOI.EqualTo{T}) whe
 end
 
 function MOI.add_constrained_variable(model::Optimizer, set::MOI.GreaterThan{T}) where {T <: Real}
-    v = _make_intvar(model, _to_int32(set.lower), _DEFAULT_INT_UB)
+    lb = _to_int32_lb(set.lower)
+    v = _make_intvar(model, lb, _DEFAULT_INT_UB)
     vindex, cindex = _make_var(model, v, set)
-    _info(model, vindex).lb = round(Int, set.lower)
+    _info(model, vindex).lb = Int(lb)
     return vindex, cindex
 end
 
 function MOI.add_constrained_variable(model::Optimizer, set::MOI.LessThan{T}) where {T <: Real}
-    v = _make_intvar(model, _DEFAULT_INT_LB, _to_int32(set.upper))
+    ub = _to_int32_ub(set.upper)
+    v = _make_intvar(model, _DEFAULT_INT_LB, ub)
     vindex, cindex = _make_var(model, v, set)
-    _info(model, vindex).ub = round(Int, set.upper)
+    _info(model, vindex).ub = Int(ub)
     return vindex, cindex
 end
 
 function MOI.add_constrained_variable(model::Optimizer, set::MOI.Interval{T}) where {T <: Real}
-    v = _make_intvar(model, _to_int32(set.lower), _to_int32(set.upper))
+    lb = _to_int32_lb(set.lower)
+    ub = _to_int32_ub(set.upper)
+    v = _make_intvar(model, lb, ub)
     vindex, cindex = _make_var(model, v, set)
-    _info(model, vindex).lb = round(Int, set.lower)
-    _info(model, vindex).ub = round(Int, set.upper)
+    _info(model, vindex).lb = Int(lb)
+    _info(model, vindex).ub = Int(ub)
     return vindex, cindex
 end
 

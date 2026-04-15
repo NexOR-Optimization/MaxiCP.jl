@@ -56,6 +56,8 @@ function MOI.is_valid(
 end
 
 _to_int32(x::Real) = Int32(round(Int, x))
+_to_int32_lb(x::Real) = Int32(ceil(Int, x))
+_to_int32_ub(x::Real) = Int32(floor(Int, x))
 
 function MOI.add_constraint(
     model::Optimizer,
@@ -80,7 +82,7 @@ function MOI.add_constraint(
     s::MOI.LessThan{T},
 ) where {T <: Real}
     v = _info(model, f).variable
-    val = _to_int32(s.upper)
+    val = _to_int32_ub(s.upper)
     expr = jcall(MFactory, "le", BoolExpression, (IntExpression, jint), v, val)
     _add_bool_constraint(model, expr)
     _info(model, f).ub = Int(val)
@@ -95,7 +97,7 @@ function MOI.add_constraint(
     s::MOI.GreaterThan{T},
 ) where {T <: Real}
     v = _info(model, f).variable
-    val = _to_int32(s.lower)
+    val = _to_int32_lb(s.lower)
     expr = jcall(MFactory, "ge", BoolExpression, (IntExpression, jint), v, val)
     _add_bool_constraint(model, expr)
     _info(model, f).lb = Int(val)
@@ -110,8 +112,8 @@ function MOI.add_constraint(
     s::MOI.Interval{T},
 ) where {T <: Real}
     v = _info(model, f).variable
-    lb_val = _to_int32(s.lower)
-    ub_val = _to_int32(s.upper)
+    lb_val = _to_int32_lb(s.lower)
+    ub_val = _to_int32_ub(s.upper)
     lb_expr = jcall(MFactory, "ge", BoolExpression, (IntExpression, jint), v, lb_val)
     ub_expr = jcall(MFactory, "le", BoolExpression, (IntExpression, jint), v, ub_val)
     _add_bool_constraint(model, lb_expr)

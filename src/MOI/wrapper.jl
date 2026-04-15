@@ -200,8 +200,20 @@ function MOI.optimize!(model::Optimizer)
         return
     end
 
-    # Instantiate to concrete CP model
-    jcall(model.inner, "cpInstantiate", ConcreteCPModel, ())
+    # Instantiate to concrete CP model.
+    # MaxiCP throws InconsistencyException during instantiation if the model
+    # is infeasible at the root (e.g., empty domains after propagation).
+    local cp
+    try
+        cp = jcall(model.inner, "cpInstantiate", ConcreteCPModel, ())
+    catch e
+        if e isa JavaCall.JavaCallError
+            model.termination_status = MOI.INFEASIBLE
+            model.primal_status = MOI.NO_SOLUTION
+            return
+        end
+        rethrow()
+    end
 
     # Create default branching strategy (first-fail)
     branching = jcall(JSearches, "firstFail", JSupplier, (Vector{IntExpression},), vars)
@@ -210,6 +222,7 @@ function MOI.optimize!(model::Optimizer)
     dfs = jcall(model.inner, "dfSearch", DFSearch, (JSupplier,), branching)
 
     # Use SearchHelper to solve and capture solution values via onSolution callback
+    local result
     if model.objective_sense == MOI.FEASIBILITY_SENSE
         result = jcall(SearchHelper, "solveAndCapture", Vector{jint},
                        (DFSearch, Vector{IntExpression}), dfs, vars)
