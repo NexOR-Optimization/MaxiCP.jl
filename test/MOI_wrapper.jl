@@ -78,7 +78,6 @@ function test_runtests()
             "test_cpsat_Cumulative",
             "test_cpsat_Path",
             "test_cpsat_ReifiedAllDifferent",
-            "test_cpsat_Table",
             # Infeasible/unbounded detection
             r"test_infeasible_",
             r"test_unbounded_",

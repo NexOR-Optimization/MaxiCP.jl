@@ -24,6 +24,9 @@ const JSupplier = @jimport java.util.function.Supplier
 ## Objective types
 const SymObjective = @jimport org.maxicp.modeling.symbolic.Objective
 
+## Java utility types
+const JOptional = @jimport java.util.Optional
+
 ## Helper types
 const SearchHelper = @jimport SearchHelper
 const JPredicate = @jimport java.util.function.Predicate
