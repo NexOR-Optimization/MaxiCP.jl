@@ -31,4 +31,7 @@ using Test
         cp = jcall(model, "cpInstantiate", ConcreteCPModel, ())
         @test cp !== nothing
     end
+
+    include("MOI_wrapper.jl")
+    include("sudoku.jl")
 end
