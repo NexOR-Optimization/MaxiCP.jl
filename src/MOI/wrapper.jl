@@ -1,6 +1,32 @@
 const _DEFAULT_INT_LB = Int32(-1_000_000)
 const _DEFAULT_INT_UB = Int32(1_000_000)
 
+"""
+    SubCircuit(dimension::Int)
+
+The set of successor vectors `x ∈ {1..d}^d` such that the non-fixed-point
+elements (`x[i] ≠ i`) form a single Hamiltonian circuit.
+Nodes with `x[i] == i` are not part of the circuit.
+
+Uses 1-based indexing (like `MOI.Circuit`).
+
+## Example
+
+A VRP with 3 trucks can be modeled with 3 depot copies. Each truck's route
+is a sub-circuit through its depot and assigned customers:
+
+```julia
+model = GenericModel{Int}()
+@variable(model, 1 <= next[1:n] <= n, Int)
+@constraint(model, next in MaxiCP.SubCircuit(n))
+```
+"""
+struct SubCircuit <: MOI.AbstractVectorSet
+    dimension::Int
+end
+
+MOI.dimension(set::SubCircuit) = set.dimension
+
 mutable struct VariableInfo
     index::MOI.VariableIndex
     variable::JavaObject  # modeling IntVar (implements IntExpression)
@@ -35,6 +61,8 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     inner::ModelDispatcher
     variable_info::MOI.Utilities.CleverDicts.CleverDict{MOI.VariableIndex, VariableInfo}
     constraint_info::Dict{MOI.ConstraintIndex, ConstraintInfo}
+    # Constraints that must be posted after cpInstantiate (raw CP constraints)
+    deferred_constraints::Vector{Function}
     name::String
     objective_sense::MOI.OptimizationSense
     objective_function_type::Union{Nothing, DataType}
@@ -49,6 +77,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
         model.inner = jcall(MFactory, "makeModelDispatcher", ModelDispatcher, ())
         model.variable_info = MOI.Utilities.CleverDicts.CleverDict{MOI.VariableIndex, VariableInfo}()
         model.constraint_info = Dict{MOI.ConstraintIndex, ConstraintInfo}()
+        model.deferred_constraints = Function[]
         model.name = ""
         model.objective_sense = MOI.FEASIBILITY_SENSE
         model.objective_function_type = nothing
@@ -66,6 +95,7 @@ function MOI.empty!(model::Optimizer)
     model.name = ""
     empty!(model.variable_info)
     empty!(model.constraint_info)
+    empty!(model.deferred_constraints)
     model.objective_sense = MOI.FEASIBILITY_SENSE
     model.objective_function_type = nothing
     model.objective_function = nothing
@@ -80,6 +110,7 @@ function MOI.is_empty(model::Optimizer)
     !isempty(model.name) && return false
     !isempty(model.variable_info) && return false
     !isempty(model.constraint_info) && return false
+    !isempty(model.deferred_constraints) && return false
     model.objective_sense != MOI.FEASIBILITY_SENSE && return false
     model.objective_function_type !== nothing && return false
     model.objective_function !== nothing && return false
@@ -206,6 +237,9 @@ function MOI.optimize!(model::Optimizer)
     local cp
     try
         cp = jcall(model.inner, "cpInstantiate", ConcreteCPModel, ())
+        for post_fn in model.deferred_constraints
+            post_fn(model)
+        end
     catch e
         if e isa JavaCall.JavaCallError
             model.termination_status = MOI.INFEASIBLE

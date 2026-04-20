@@ -81,6 +81,16 @@ function _build_constraint(
     )
 end
 
+# SubCircuit constraint (raw CP, posted after cpInstantiate)
+
+function MOI.supports_constraint(
+    ::Optimizer,
+    ::Type{MOI.VectorOfVariables},
+    ::Type{SubCircuit},
+)
+    return true
+end
+
 # Table constraint
 
 function MOI.supports_constraint(

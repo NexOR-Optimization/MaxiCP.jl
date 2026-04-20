@@ -72,6 +72,27 @@ end
 function MOI.add_constraint(
     model::Optimizer,
     f::MOI.VectorOfVariables,
+    s::SubCircuit,
+)
+    index = MOI.ConstraintIndex{MOI.VectorOfVariables, SubCircuit}(length(model.constraint_info) + 1)
+    # SubCircuit is a raw CP constraint — defer posting until after cpInstantiate.
+    # Capture the variables now (1-based MOI → 0-based MaxiCP shift).
+    vars = _parse_to_vars(model, f)
+    shifted = IntExpression[
+        jcall(MFactory, "minus", IntExpression, (IntExpression, jint), v, Int32(1))
+        for v in vars
+    ]
+    push!(model.deferred_constraints, _ -> begin
+        jcall(SearchHelper, "postSubCircuit", Nothing,
+              (ModelDispatcher, Vector{IntExpression}), model.inner, shifted)
+    end)
+    model.constraint_info[index] = ConstraintInfo(index, nothing, f, s)
+    return index
+end
+
+function MOI.add_constraint(
+    model::Optimizer,
+    f::MOI.VectorOfVariables,
     s::MOI.Table{T},
 ) where {T <: Real}
     index = MOI.ConstraintIndex{MOI.VectorOfVariables, MOI.Table{T}}(length(model.constraint_info) + 1)
