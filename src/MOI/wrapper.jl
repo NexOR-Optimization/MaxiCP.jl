@@ -33,7 +33,7 @@ end
 
 mutable struct Optimizer <: MOI.AbstractOptimizer
     inner::ModelDispatcher
-    variable_info::CleverDicts.CleverDict{MOI.VariableIndex, VariableInfo}
+    variable_info::MOI.Utilities.CleverDicts.CleverDict{MOI.VariableIndex, VariableInfo}
     constraint_info::Dict{MOI.ConstraintIndex, ConstraintInfo}
     name::String
     objective_sense::MOI.OptimizationSense
@@ -47,7 +47,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     function Optimizer()
         model = new()
         model.inner = jcall(MFactory, "makeModelDispatcher", ModelDispatcher, ())
-        model.variable_info = CleverDicts.CleverDict{MOI.VariableIndex, VariableInfo}()
+        model.variable_info = MOI.Utilities.CleverDicts.CleverDict{MOI.VariableIndex, VariableInfo}()
         model.constraint_info = Dict{MOI.ConstraintIndex, ConstraintInfo}()
         model.name = ""
         model.objective_sense = MOI.FEASIBILITY_SENSE
