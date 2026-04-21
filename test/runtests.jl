@@ -34,4 +34,5 @@ using Test
 
     include("MOI_wrapper.jl")
     include("sudoku.jl")
+    include("tsp.jl")
 end
