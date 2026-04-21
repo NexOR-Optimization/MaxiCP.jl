@@ -1,11 +1,7 @@
 module MaxiCP
 
 using JavaCall
-import MathOptInterface
-
-const MOI = MathOptInterface
-const MOIU = MOI.Utilities
-const CleverDicts = MOIU.CleverDicts
+import MathOptInterface as MOI
 
 const depsfile = joinpath(dirname(@__FILE__), "..", "deps", "deps.jl")
 if isfile(depsfile)
