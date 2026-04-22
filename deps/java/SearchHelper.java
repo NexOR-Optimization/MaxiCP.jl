@@ -2,6 +2,9 @@ import java.util.function.Predicate;
 import org.maxicp.search.SearchStatistics;
 import org.maxicp.search.DFSearch;
 import org.maxicp.modeling.algebra.integer.IntExpression;
+import org.maxicp.modeling.ModelProxy;
+import org.maxicp.cp.modeling.ConcreteCPModel;
+import org.maxicp.cp.engine.core.CPIntVar;
 
 public class SearchHelper {
     public static Predicate<SearchStatistics> stopAfterFirstSolution() {
@@ -50,5 +53,22 @@ public class SearchHelper {
             return result;
         }
         return null;
+    }
+
+    /**
+     * Post a SubCircuit constraint on the given variables.
+     * Must be called AFTER cpInstantiate() since SubCircuit is a raw CP
+     * constraint not available in the modeling layer.
+     *
+     * @param modelProxy the ModelDispatcher (must be instantiated)
+     * @param vars the successor variables (modeling layer)
+     */
+    public static void postSubCircuit(org.maxicp.ModelDispatcher modelProxy, IntExpression[] vars) {
+        ConcreteCPModel cp = (ConcreteCPModel) modelProxy.getConcreteModel();
+        CPIntVar[] cpVars = new CPIntVar[vars.length];
+        for (int i = 0; i < vars.length; i++) {
+            cpVars[i] = cp.getCPVar(vars[i]);
+        }
+        cp.solver.post(new org.maxicp.cp.engine.constraints.SubCircuit(cpVars));
     }
 }
