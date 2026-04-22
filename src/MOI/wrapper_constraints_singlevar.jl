@@ -125,6 +125,20 @@ function MOI.add_constraint(
     return index
 end
 
+function MOI.add_constraint(
+    model::Optimizer,
+    f::MOI.VariableIndex,
+    s::CP.DifferentFrom{T},
+) where {T <: Real}
+    v = _info(model, f).variable
+    val = _to_int32(s.value)
+    expr = jcall(MFactory, "neq", BoolExpression, (IntExpression, jint), v, val)
+    _add_bool_constraint(model, expr)
+    index = MOI.ConstraintIndex{MOI.VariableIndex, CP.DifferentFrom{T}}(f.value)
+    model.constraint_info[index] = ConstraintInfo(index, expr, f, s)
+    return index
+end
+
 function MOI.get(
     model::Optimizer,
     ::MOI.ConstraintFunction,

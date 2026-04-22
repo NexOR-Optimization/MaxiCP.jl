@@ -2,6 +2,7 @@ module MaxiCP
 
 using JavaCall
 import MathOptInterface as MOI
+import ConstraintProgrammingExtensions as CP
 
 const depsfile = joinpath(dirname(@__FILE__), "..", "deps", "deps.jl")
 if isfile(depsfile)

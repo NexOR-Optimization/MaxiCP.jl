@@ -2,55 +2,47 @@ using JuMP
 using Test
 import MaxiCP
 import MathOptInterface as MOI
+import ConstraintProgrammingExtensions as CP
 
 @testset "VRP with SubCircuit" begin
-    # 4 customers + 1 depot (node 1), 2 trucks
-    # Depot copies: node 1 (truck 1 start/end), node 6 (truck 2 start/end)
-    # Customers: nodes 2, 3, 4, 5
-    # Distance matrix (symmetric, integer):
-    #       depot  c1  c2  c3  c4
-    # depot   0    10  20  30  40
-    # c1     10     0  15  25  35
-    # c2     20    15   0  10  20
-    # c3     30    25  10   0  10
-    # c4     40    35  20  10   0
+    # 5 customers, 2 trucks, 1 depot
+    # Depot copies: nodes 6, 7 (same location as node 1 would be, at coord 0)
+    # Customers: nodes 1..5
+    # We must visit all customers (enforce next[i] != i for customers)
+    # The two depot copies split the circuit into two truck routes.
 
-    n_customers = 4
+    n_customers = 5
     n_trucks = 2
-    n = n_customers + n_trucks  # 6 nodes: customers 2-5, depot copies 1 and 6
+    n = n_customers + n_trucks  # 7 total nodes
 
-    # Distances (1-indexed, node 1 and 6 are depot copies at same location)
-    coords = [0, 10, 20, 30, 40, 0]  # 1D for simplicity
+    # 1D coordinates for simplicity
+    # Customers at positions 10, 20, 30, 40, 50; depot copies at 0
+    coords = [10, 20, 30, 40, 50, 0, 0]
     dist = [abs(coords[i] - coords[j]) for i in 1:n, j in 1:n]
 
-    # Build table of (from, to, cost) for valid edges
+    # Build table: (from, to, cost) for all edges including self-loops (cost 0)
     table = reduce(vcat, [
-        [i j dist[i, j]]
-        for i in 1:n for j in 1:n if i != j
+        [i, j, (i == j ? 0 : dist[i, j])]'
+        for i in 1:n for j in 1:n
     ])
 
     model = GenericModel{Int}()
 
-    # Successor variables: next[i] = j means node i is followed by node j
-    # next[i] = i means node i is not visited (SubCircuit self-loop)
     @variable(model, 1 <= next[1:n] <= n, Int)
-
-    # SubCircuit: non-self-loop nodes form a single circuit
     @constraint(model, next in MaxiCP.SubCircuit(n))
 
-    # Depot copies must be in the circuit (they are the truck start points).
-    # In a SubCircuit, next[i] == i means "not visited". Force depots into circuit
-    # by excluding self-loops: next[1] in {2..n}, next[n] in {1..n-1}
-    @constraint(model, next[1] >= 2)
-    @constraint(model, next[n] <= n - 1)
+    # All customers must be visited (no self-loops)
+    @constraint(model, [i = 1:n_customers], next[i] in CP.DifferentFrom(i))
+    # Both depot copies must be in the circuit
+    depot1 = n_customers + 1
+    depot2 = n_customers + 2
+    @constraint(model, next[depot1] in CP.DifferentFrom(depot1))
+    @constraint(model, next[depot2] in CP.DifferentFrom(depot2))
 
     # Edge costs via Table
     @variable(model, cost[1:n], Int)
     @constraint(model, [i = 1:n], [i, next[i], cost[i]] in MOI.Table(table))
-    # Self-loop cost is 0 (for nodes not in circuit)
-    # The table includes i->i with dist=0
 
-    # Minimize total cost
     @objective(model, Min, sum(cost))
 
     set_optimizer(model, MaxiCP.Optimizer)
@@ -61,29 +53,45 @@ import MathOptInterface as MOI
     next_val = round.(Int, value.(next))
     cost_val = round.(Int, value.(cost))
 
-    # Verify SubCircuit property: non-self-loop nodes form exactly one circuit
-    in_circuit = [i for i in 1:n if next_val[i] != i]
-    if !isempty(in_circuit)
-        # Follow the circuit starting from the first node in it
-        start = in_circuit[1]
-        visited = Set{Int}()
-        current = start
-        while true
-            push!(visited, current)
-            current = next_val[current]
-            current == start && break
-            @test current ∉ visited  # no revisits
-        end
-        @test visited == Set(in_circuit)  # all in-circuit nodes are connected
-    end
-
-    # Both depot copies should be in the circuit
-    @test next_val[1] != 1
-    @test next_val[n] != n
-
-    # Verify costs
+    # Verify all customers + depots are in the circuit
     for i in 1:n
-        j = next_val[i]
-        @test cost_val[i] == dist[i, j]
+        @test next_val[i] != i
     end
+
+    # Verify single circuit through all nodes
+    visited = Set{Int}()
+    current = 1
+    for _ in 1:n
+        @test current ∉ visited
+        push!(visited, current)
+        current = next_val[current]
+    end
+    @test current == 1  # back to start
+    @test length(visited) == n
+
+    # Verify costs match distances
+    for i in 1:n
+        @test cost_val[i] == dist[i, next_val[i]]
+    end
+
+    # The two depot copies create two "routes":
+    # Route 1: depot1 → ... → depot2
+    # Route 2: depot2 → ... → depot1
+    # Extract routes
+    route1 = Int[]
+    current = depot1
+    while true
+        current = next_val[current]
+        current == depot2 && break
+        push!(route1, current)
+    end
+    route2 = Int[]
+    current = depot2
+    while true
+        current = next_val[current]
+        current == depot1 && break
+        push!(route2, current)
+    end
+    # All customers assigned to exactly one route
+    @test sort(vcat(route1, route2)) == 1:n_customers
 end

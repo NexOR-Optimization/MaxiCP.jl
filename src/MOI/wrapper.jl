@@ -190,6 +190,14 @@ end
 
 function MOI.supports_constraint(
     ::Optimizer,
+    ::Type{MOI.VariableIndex},
+    ::Type{CP.DifferentFrom{T}},
+) where {T <: Union{Int, Float64}}
+    return true
+end
+
+function MOI.supports_constraint(
+    ::Optimizer,
     ::Type{MOI.VectorOfVariables},
     ::Type{MOI.AllDifferent},
 )
