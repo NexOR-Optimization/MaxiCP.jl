@@ -1,7 +1,7 @@
 using Downloads
 
-const MAXICP_VERSION = "faef72ee7d"
-const MAXICP_URL = "https://jitpack.io/com/github/aia-uclouvain/maxicp/$MAXICP_VERSION/maxicp-$MAXICP_VERSION.jar"
+const MAXICP_VERSION = "0.0.2"
+const MAXICP_URL = "https://repo1.maven.org/maven2/org/maxicp/maxicp/$MAXICP_VERSION/maxicp-$MAXICP_VERSION.jar"
 
 const DEPSFILE = joinpath(@__DIR__, "deps.jl")
 if isfile(DEPSFILE)
