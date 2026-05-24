@@ -39,26 +39,6 @@ function VariableInfo(index::MOI.VariableIndex, variable::Union{Nothing, JavaObj
     return VariableInfo(index, variable, "", nothing, nothing, false)
 end
 
-function _get_jvar(model::Optimizer, vi::MOI.VariableIndex)
-    info = _info(model, vi)
-    if info.variable !== nothing
-        return info.variable
-    end
-    if info.lb === nothing || info.ub === nothing
-        error(
-            "MaxiCP requires every variable to have both a lower and an upper bound. ",
-            "Variable $(vi) is missing ",
-            info.lb === nothing && info.ub === nothing ? "both bounds" :
-            info.lb === nothing ? "a lower bound" : "an upper bound",
-            ". Add `MOI.Interval`, `MOI.EqualTo`, `MOI.ZeroOne`, or both ",
-            "`MOI.GreaterThan` and `MOI.LessThan` before using the variable.",
-        )
-    end
-    v = _make_intvar(model, Int32(info.lb), Int32(info.ub))
-    info.variable = v
-    return v
-end
-
 mutable struct ConstraintInfo
     index::MOI.ConstraintIndex
     constraint::Union{JavaObject, Nothing}
@@ -107,6 +87,26 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
         model.cached_objective_value = nothing
         return model
     end
+end
+
+function _get_jvar(model::Optimizer, vi::MOI.VariableIndex)
+    info = _info(model, vi)
+    if info.variable !== nothing
+        return info.variable
+    end
+    if info.lb === nothing || info.ub === nothing
+        error(
+            "MaxiCP requires every variable to have both a lower and an upper bound. ",
+            "Variable $(vi) is missing ",
+            info.lb === nothing && info.ub === nothing ? "both bounds" :
+            info.lb === nothing ? "a lower bound" : "an upper bound",
+            ". Add `MOI.Interval`, `MOI.EqualTo`, `MOI.ZeroOne`, or both ",
+            "`MOI.GreaterThan` and `MOI.LessThan` before using the variable.",
+        )
+    end
+    v = _make_intvar(model, Int32(info.lb), Int32(info.ub))
+    info.variable = v
+    return v
 end
 
 function MOI.empty!(model::Optimizer)
