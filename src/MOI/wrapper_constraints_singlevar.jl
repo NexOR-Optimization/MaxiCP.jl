@@ -142,6 +142,33 @@ function MOI.add_constraint(
     return index
 end
 
+# `MOI.Bridges.Constraint.ZeroOneBridge` converts to `ScalarAffineFunction`
+# so it's best to just support binary variables directly
+function MOI.add_constraint(
+    model::Optimizer,
+    f::MOI.VariableIndex,
+    s::MOI.ZeroOne,
+)
+    info = _info(model, f)
+    info.lb = 0
+    info.ub = 1
+    info.is_binary = true
+    index = MOI.ConstraintIndex{MOI.VariableIndex, MOI.ZeroOne}(f.value)
+    model.constraint_info[index] = ConstraintInfo(index, nothing, f, s)
+    return index
+end
+
+function MOI.add_constraint(
+    model::Optimizer,
+    f::MOI.VariableIndex,
+    s::MOI.Integer,
+)
+    # MaxiCP variables are integer by construction; no bounds implied.
+    index = MOI.ConstraintIndex{MOI.VariableIndex, MOI.Integer}(f.value)
+    model.constraint_info[index] = ConstraintInfo(index, nothing, f, s)
+    return index
+end
+
 function MOI.add_constraint(
     model::Optimizer,
     f::MOI.VariableIndex,

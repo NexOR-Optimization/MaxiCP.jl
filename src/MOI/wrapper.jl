@@ -201,6 +201,14 @@ end
 
 function MOI.supports_constraint(
     ::Optimizer,
+    ::Type{MOI.VariableIndex},
+    ::Type{S},
+) where {S <: Union{MOI.ZeroOne, MOI.Integer}}
+    return true
+end
+
+function MOI.supports_constraint(
+    ::Optimizer,
     ::Type{MOI.ScalarAffineFunction{T}},
     ::Type{S},
 ) where {T <: Union{Int, Float64}, S <: Union{MOI.EqualTo{T}, MOI.LessThan{T}, MOI.GreaterThan{T}}}
