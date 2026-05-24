@@ -64,14 +64,19 @@ function MOI.add_constraint(
     f::MOI.VariableIndex,
     s::MOI.EqualTo{T},
 ) where {T <: Real}
-    v = _info(model, f).variable
     val = _to_int32(s.value)
-    expr = jcall(MFactory, "eq", BoolExpression, (IntExpression, jint), v, val)
-    _add_bool_constraint(model, expr)
     ival = Int(val)
-    _info(model, f).lb = ival
-    _info(model, f).ub = ival
+    info = _info(model, f)
+    info.lb = ival
+    info.ub = ival
     index = MOI.ConstraintIndex{MOI.VariableIndex, MOI.EqualTo{T}}(f.value)
+    expr = if info.variable === nothing
+        nothing
+    else
+        e = jcall(MFactory, "eq", BoolExpression, (IntExpression, jint), info.variable, val)
+        _add_bool_constraint(model, e)
+        e
+    end
     model.constraint_info[index] = ConstraintInfo(index, expr, f, s)
     return index
 end
@@ -81,12 +86,17 @@ function MOI.add_constraint(
     f::MOI.VariableIndex,
     s::MOI.LessThan{T},
 ) where {T <: Real}
-    v = _info(model, f).variable
     val = _to_int32_ub(s.upper)
-    expr = jcall(MFactory, "le", BoolExpression, (IntExpression, jint), v, val)
-    _add_bool_constraint(model, expr)
-    _info(model, f).ub = Int(val)
+    info = _info(model, f)
+    info.ub = Int(val)
     index = MOI.ConstraintIndex{MOI.VariableIndex, MOI.LessThan{T}}(f.value)
+    expr = if info.variable === nothing
+        nothing
+    else
+        e = jcall(MFactory, "le", BoolExpression, (IntExpression, jint), info.variable, val)
+        _add_bool_constraint(model, e)
+        e
+    end
     model.constraint_info[index] = ConstraintInfo(index, expr, f, s)
     return index
 end
@@ -96,12 +106,17 @@ function MOI.add_constraint(
     f::MOI.VariableIndex,
     s::MOI.GreaterThan{T},
 ) where {T <: Real}
-    v = _info(model, f).variable
     val = _to_int32_lb(s.lower)
-    expr = jcall(MFactory, "ge", BoolExpression, (IntExpression, jint), v, val)
-    _add_bool_constraint(model, expr)
-    _info(model, f).lb = Int(val)
+    info = _info(model, f)
+    info.lb = Int(val)
     index = MOI.ConstraintIndex{MOI.VariableIndex, MOI.GreaterThan{T}}(f.value)
+    expr = if info.variable === nothing
+        nothing
+    else
+        e = jcall(MFactory, "ge", BoolExpression, (IntExpression, jint), info.variable, val)
+        _add_bool_constraint(model, e)
+        e
+    end
     model.constraint_info[index] = ConstraintInfo(index, expr, f, s)
     return index
 end
@@ -111,15 +126,17 @@ function MOI.add_constraint(
     f::MOI.VariableIndex,
     s::MOI.Interval{T},
 ) where {T <: Real}
-    v = _info(model, f).variable
     lb_val = _to_int32_lb(s.lower)
     ub_val = _to_int32_ub(s.upper)
-    lb_expr = jcall(MFactory, "ge", BoolExpression, (IntExpression, jint), v, lb_val)
-    ub_expr = jcall(MFactory, "le", BoolExpression, (IntExpression, jint), v, ub_val)
-    _add_bool_constraint(model, lb_expr)
-    _add_bool_constraint(model, ub_expr)
-    _info(model, f).lb = Int(lb_val)
-    _info(model, f).ub = Int(ub_val)
+    info = _info(model, f)
+    info.lb = Int(lb_val)
+    info.ub = Int(ub_val)
+    if info.variable !== nothing
+        lb_expr = jcall(MFactory, "ge", BoolExpression, (IntExpression, jint), info.variable, lb_val)
+        ub_expr = jcall(MFactory, "le", BoolExpression, (IntExpression, jint), info.variable, ub_val)
+        _add_bool_constraint(model, lb_expr)
+        _add_bool_constraint(model, ub_expr)
+    end
     index = MOI.ConstraintIndex{MOI.VariableIndex, MOI.Interval{T}}(f.value)
     model.constraint_info[index] = ConstraintInfo(index, nothing, f, s)
     return index
@@ -130,7 +147,7 @@ function MOI.add_constraint(
     f::MOI.VariableIndex,
     s::CP.DifferentFrom{T},
 ) where {T <: Real}
-    v = _info(model, f).variable
+    v = _get_jvar(model, f)
     val = _to_int32(s.value)
     expr = jcall(MFactory, "neq", BoolExpression, (IntExpression, jint), v, val)
     _add_bool_constraint(model, expr)

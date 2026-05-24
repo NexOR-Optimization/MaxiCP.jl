@@ -64,7 +64,7 @@ function _build_constraint(
         info = _info(model, vi)
         ub = info.ub
         if ub === nothing
-            ub = Int(jcall(info.variable, "max", jint, ()))
+            ub = Int(jcall(_get_jvar(model, vi), "max", jint, ()))
         end
         max_bin = max(max_bin, ub)
     end

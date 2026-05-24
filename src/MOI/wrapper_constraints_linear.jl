@@ -9,7 +9,7 @@ function _build_linear_expression(model::Optimizer, f::MOI.ScalarAffineFunction{
     end
     exprs = JavaObject[]
     for t in terms
-        v = _info(model, t.variable).variable
+        v = _get_jvar(model, t.variable)
         c = round(Int, t.coefficient)
         if c == 1
             push!(exprs, v)
