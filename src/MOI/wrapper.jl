@@ -258,7 +258,7 @@ function MOI.optimize!(model::Optimizer)
     end
 
     # Create default branching strategy (first-fail)
-    branching = jcall(JSearches, "firstFail", JSupplier, (Vector{IntExpression},), vars)
+    branching = jcall(JSearches, "firstFailBinary", JSupplier, (Vector{IntExpression},), vars)
 
     # Create search
     dfs = jcall(model.inner, "dfSearch", DFSearch, (JSupplier,), branching)
