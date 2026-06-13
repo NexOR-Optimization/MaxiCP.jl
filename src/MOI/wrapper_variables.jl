@@ -5,7 +5,7 @@ function _info(model::Optimizer, key::MOI.VariableIndex)
     throw(MOI.InvalidIndex(key))
 end
 
-function _make_var(model::Optimizer, variable::JavaObject)
+function _make_var(model::Optimizer, variable::Union{Nothing, JavaObject})
     index = MOI.Utilities.CleverDicts.add_item(
         model.variable_info,
         VariableInfo(MOI.VariableIndex(0), variable),
@@ -16,7 +16,7 @@ end
 
 function _make_var(
     model::Optimizer,
-    variable::JavaObject,
+    variable::Union{Nothing, JavaObject},
     set::MOI.AbstractScalarSet,
 )
     index = _make_var(model, variable)
@@ -49,14 +49,11 @@ function MOI.supports_add_constrained_variable(
 end
 
 function MOI.add_variable(model::Optimizer)
-    v = _make_intvar(model, _DEFAULT_INT_LB, _DEFAULT_INT_UB)
-    return _make_var(model, v)
+    return _make_var(model, nothing)
 end
 
 function MOI.add_constrained_variable(model::Optimizer, set::MOI.Integer)
-    v = _make_intvar(model, _DEFAULT_INT_LB, _DEFAULT_INT_UB)
-    vindex, cindex = _make_var(model, v, set)
-    return vindex, cindex
+    return _make_var(model, nothing, set)
 end
 
 function MOI.add_constrained_variable(model::Optimizer, set::MOI.ZeroOne)
@@ -80,16 +77,14 @@ end
 
 function MOI.add_constrained_variable(model::Optimizer, set::MOI.GreaterThan{T}) where {T <: Real}
     lb = _to_int32_lb(set.lower)
-    v = _make_intvar(model, lb, _DEFAULT_INT_UB)
-    vindex, cindex = _make_var(model, v, set)
+    vindex, cindex = _make_var(model, nothing, set)
     _info(model, vindex).lb = Int(lb)
     return vindex, cindex
 end
 
 function MOI.add_constrained_variable(model::Optimizer, set::MOI.LessThan{T}) where {T <: Real}
     ub = _to_int32_ub(set.upper)
-    v = _make_intvar(model, _DEFAULT_INT_LB, ub)
-    vindex, cindex = _make_var(model, v, set)
+    vindex, cindex = _make_var(model, nothing, set)
     _info(model, vindex).ub = Int(ub)
     return vindex, cindex
 end

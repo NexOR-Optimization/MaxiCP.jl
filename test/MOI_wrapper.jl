@@ -89,6 +89,14 @@ function test_runtests()
             r"test_vector_nonlinear_",
             # Solve tests that may have issues
             r"test_solve_SOS2",
+            # Tests that post `ScalarAffineFunction`/`VariableIndex` objective on
+            # variables added without bounds; incompatible with our bound-required
+            # variable model.
+            r"test_model_ScalarAffineFunction_ConstraintName",
+            r"test_model_duplicate_ScalarAffineFunction_ConstraintName",
+            r"test_model_is_valid",
+            r"test_objective_FEASIBILITY_SENSE_clears_objective",
+            r"test_objective_ObjectiveFunction_blank",
         ],
     )
     return

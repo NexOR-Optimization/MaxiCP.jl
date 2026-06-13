@@ -1,6 +1,3 @@
-const _DEFAULT_INT_LB = Int32(-1_000_000)
-const _DEFAULT_INT_UB = Int32(1_000_000)
-
 """
     SubCircuit(dimension::Int)
 
@@ -29,14 +26,16 @@ MOI.dimension(set::SubCircuit) = set.dimension
 
 mutable struct VariableInfo
     index::MOI.VariableIndex
-    variable::JavaObject  # modeling IntVar (implements IntExpression)
+    # `nothing` until both `lb` and `ub` are known; materialised lazily by
+    # `_get_jvar`. MaxiCP requires concrete bounds at `intVar` creation.
+    variable::Union{Nothing, JavaObject}
     name::String
     lb::Union{Nothing, Int}
     ub::Union{Nothing, Int}
     is_binary::Bool
 end
 
-function VariableInfo(index::MOI.VariableIndex, variable::JavaObject)
+function VariableInfo(index::MOI.VariableIndex, variable::Union{Nothing, JavaObject})
     return VariableInfo(index, variable, "", nothing, nothing, false)
 end
 
@@ -88,6 +87,26 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
         model.cached_objective_value = nothing
         return model
     end
+end
+
+function _get_jvar(model::Optimizer, vi::MOI.VariableIndex)
+    info = _info(model, vi)
+    if info.variable !== nothing
+        return info.variable
+    end
+    if info.lb === nothing || info.ub === nothing
+        error(
+            "MaxiCP requires every variable to have both a lower and an upper bound. ",
+            "Variable $(vi) is missing ",
+            info.lb === nothing && info.ub === nothing ? "both bounds" :
+            info.lb === nothing ? "a lower bound" : "an upper bound",
+            ". Add `MOI.Interval`, `MOI.EqualTo`, `MOI.ZeroOne`, or both ",
+            "`MOI.GreaterThan` and `MOI.LessThan` before using the variable.",
+        )
+    end
+    v = _make_intvar(model, Int32(info.lb), Int32(info.ub))
+    info.variable = v
+    return v
 end
 
 function MOI.empty!(model::Optimizer)
@@ -182,6 +201,14 @@ end
 
 function MOI.supports_constraint(
     ::Optimizer,
+    ::Type{MOI.VariableIndex},
+    ::Type{S},
+) where {S <: Union{MOI.ZeroOne, MOI.Integer}}
+    return true
+end
+
+function MOI.supports_constraint(
+    ::Optimizer,
     ::Type{MOI.ScalarAffineFunction{T}},
     ::Type{S},
 ) where {T <: Union{Int, Float64}, S <: Union{MOI.EqualTo{T}, MOI.LessThan{T}, MOI.GreaterThan{T}}}
@@ -217,7 +244,7 @@ end
 function _build_objective_expression(model::Optimizer)
     f = model.objective_function
     if f isa MOI.VariableIndex
-        return _info(model, f).variable
+        return _get_jvar(model, f)
     else
         return _build_linear_expression(model, f)
     end
@@ -231,7 +258,7 @@ function MOI.optimize!(model::Optimizer)
 
     # Collect variables in a stable order (by index value)
     vis = sort!(collect(keys(model.variable_info)), by = v -> v.value)
-    vars = IntExpression[model.variable_info[vi].variable for vi in vis]
+    vars = IntExpression[_get_jvar(model, vi) for vi in vis]
 
     if isempty(vars)
         model.termination_status = MOI.OPTIMAL

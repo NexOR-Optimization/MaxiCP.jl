@@ -1,5 +1,5 @@
 function _parse_to_vars(model::Optimizer, f::MOI.VectorOfVariables)
-    return IntExpression[_info(model, v).variable for v in f.variables]
+    return IntExpression[_get_jvar(model, v) for v in f.variables]
 end
 
 # JavaCall doesn't support passing int[][] as an argument directly.
