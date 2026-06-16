@@ -36,7 +36,10 @@ function maxicp_java_init(init_java::Bool=true)
         JavaCall.addClassPath(helper_jar)
     end
     if init_java
+        # `m` = MiB, `g` = GiB: 2 MiB per-thread stack, 2 GiB max heap
+        # (TableCT allocates large bit arrays and OOMs on the default heap).
         JavaCall.addOpts("-Xss2m")
+        JavaCall.addOpts("-Xmx2g")
         JavaCall.init()
     end
     return
