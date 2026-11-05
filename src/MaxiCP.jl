@@ -3,6 +3,7 @@ module MaxiCP
 using JavaCall
 import MathOptInterface as MOI
 import ConstraintProgrammingExtensions as CP
+import MathOptVRP
 
 const depsfile = joinpath(dirname(@__FILE__), "..", "deps", "deps.jl")
 if isfile(depsfile)
@@ -50,5 +51,6 @@ include("MOI/wrapper_constraints_linear.jl")
 include("MOI/wrapper_constraints_singlevar.jl")
 include("MOI/wrapper_constraints.jl")
 include("MOI/wrapper_variables.jl")
+include("MOI/mathoptvrp.jl")
 
 end # module MaxiCP

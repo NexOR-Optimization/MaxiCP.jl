@@ -36,4 +36,5 @@ using Test
     include("sudoku.jl")
     include("tsp.jl")
     include("vrp.jl")
+    include("mathoptvrp.jl")
 end

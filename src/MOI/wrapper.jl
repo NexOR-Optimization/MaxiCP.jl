@@ -1,5 +1,8 @@
 const _DEFAULT_INT_LB = Int32(-1_000_000)
 const _DEFAULT_INT_UB = Int32(1_000_000)
+# The time limit of the search for a model with a `MathOptVRP.Partition`, when
+# none is set.
+const _DEFAULT_TIME_LIMIT = 10.0
 
 """
     SubCircuit(dimension::Int)
@@ -71,6 +74,13 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     primal_status::MOI.ResultStatusCode
     cached_solution::Dict{MOI.VariableIndex, Int}
     cached_objective_value::Union{Nothing, Int}
+    # The `MathOptVRP.Partition` of the model, and the (route, position) of each
+    # of its variables.
+    partition::Union{Nothing, MathOptVRP.Partition}
+    route_of::Dict{MOI.VariableIndex, Tuple{Int, Int}}
+    silent::Bool
+    time_limit::Union{Nothing, Float64}
+    options::Dict{String, Any}
 
     function Optimizer()
         model = new()
@@ -86,6 +96,11 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
         model.primal_status = MOI.NO_SOLUTION
         model.cached_solution = Dict{MOI.VariableIndex, Int}()
         model.cached_objective_value = nothing
+        model.partition = nothing
+        model.route_of = Dict{MOI.VariableIndex, Tuple{Int, Int}}()
+        model.silent = false
+        model.time_limit = nothing
+        model.options = Dict{String, Any}()
         return model
     end
 end
@@ -103,6 +118,8 @@ function MOI.empty!(model::Optimizer)
     model.primal_status = MOI.NO_SOLUTION
     empty!(model.cached_solution)
     model.cached_objective_value = nothing
+    model.partition = nothing
+    empty!(model.route_of)
     return
 end
 
@@ -119,6 +136,27 @@ function MOI.is_empty(model::Optimizer)
 end
 
 MOI.get(::Optimizer, ::MOI.SolverName) = "MaxiCP"
+
+MOI.supports(::Optimizer, ::MOI.Silent) = true
+MOI.get(model::Optimizer, ::MOI.Silent) = model.silent
+MOI.set(model::Optimizer, ::MOI.Silent, value::Bool) = (model.silent = value; nothing)
+
+# Only the search of a model with a `MathOptVRP.Partition` has a time limit.
+MOI.supports(::Optimizer, ::MOI.TimeLimitSec) = true
+MOI.get(model::Optimizer, ::MOI.TimeLimitSec) = model.time_limit
+function MOI.set(model::Optimizer, ::MOI.TimeLimitSec, value::Union{Nothing, Real})
+    model.time_limit = value === nothing ? nothing : Float64(value)
+    return
+end
+
+# `"seed"` and `"workers"`, the number of parallel searches, of the search of a
+# model with a `MathOptVRP.Partition`.
+MOI.supports(::Optimizer, ::MOI.RawOptimizerAttribute) = true
+MOI.get(model::Optimizer, attr::MOI.RawOptimizerAttribute) = model.options[attr.name]
+function MOI.set(model::Optimizer, attr::MOI.RawOptimizerAttribute, value)
+    model.options[attr.name] = value
+    return
+end
 
 # Objective support
 
@@ -228,6 +266,14 @@ end
 function MOI.optimize!(model::Optimizer)
     empty!(model.cached_solution)
     model.cached_objective_value = nothing
+    if model.partition !== nothing
+        return _optimize_vrp!(model)
+    end
+    for (_, info) in model.constraint_info
+        if info.set isa Union{_ROUTE_SETS, MOI.Indicator}
+            error("MaxiCP: $(typeof(info.set)) needs a MathOptVRP.Partition.")
+        end
+    end
 
     # Collect variables in a stable order (by index value)
     vis = sort!(collect(keys(model.variable_info)), by = v -> v.value)
@@ -338,6 +384,10 @@ end
 function MOI.get(model::Optimizer, attr::MOI.ObjectiveValue)
     MOI.check_result_index_bounds(model, attr)
     if model.cached_objective_value !== nothing
+        # MathOptVRP models are `JuMP.Model`s, with `Float64` values.
+        if model.partition !== nothing
+            return Float64(model.cached_objective_value)
+        end
         return model.cached_objective_value
     end
     # For feasibility sense, return 0
