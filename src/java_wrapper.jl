@@ -30,3 +30,4 @@ const JOptional = @jimport java.util.Optional
 ## Helper types
 const SearchHelper = @jimport SearchHelper
 const JPredicate = @jimport java.util.function.Predicate
+const VrpSpec = @jimport maxicpjl.VrpSpec
